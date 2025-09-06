@@ -1,0 +1,16 @@
+source: window
+window:
+  match_by: process_name
+  process_name: WorldOfTanks.exe
+  pid: null
+  title: World of Tanks
+  match_mode: contains
+  prefer_client_area: true
+  fps_limit: 0
+  allow_fallback_to_screen: false
+screen_region:
+- 0
+- 0
+- 1920
+- 1080
+rois: {}

@@ -1,0 +1,14 @@
+source: window
+
+window:
+  match_by: process_name     # process_name | pid | title
+  process_name: "WorldOfTanks.exe"   # твой .exe
+  pid: null                          # можно указать число, напр. 9404
+  title: "World of Tanks"            # fallback (если захочешь по заголовку)
+  match_mode: "contains"             # для title: contains | equals | regex
+  prefer_client_area: true
+  fps_limit: 60
+  allow_fallback_to_screen: true
+
+screen_region: [0, 0, 1920, 1080]    # на случай фолбэка
+

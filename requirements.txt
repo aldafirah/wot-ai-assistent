@@ -1,0 +1,9 @@
+opencv-python
+numpy
+mss
+pyyaml
+pywin32
+psutil
+tqdm
+torch
+torchvision
