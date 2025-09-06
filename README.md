@@ -1,121 +1,60 @@
-# WoT Live AI Assistant (v0.1)
+# WoT AI Assistant (Lite)
 
-Лайв‑коуч для World of Tanks: смотрит **твой** видеопоток (экран/OBS/RTMP), читает HUD (миникарта, лог урона, статус), и выдаёт **тактические подсказки** в оверлее. Есть сбор датасета и простое дообучение на твоих VOD’ах.
+This repository contains tools for capturing your World of Tanks gameplay and training a self‑supervised model (RotNet) on your footage.
 
-> Дизайн цели: **никакой автоматизации управления** — только анализ и советы в отдельном окне/оверлее, чтобы не нарушать ToS.
+## Features
 
----
+* **Window capture**: record the game window directly in windowed (borderless) mode on Windows.
+* **Flexible matching**: match the window by process name, PID or window title.
+* **Session recording**: save MP4 video and/or individual frames with metadata for each recording session.
+* **Self‑supervised training**: train a RotNet model on your recorded frames to learn robust visual features for downstream tasks.
 
-## Возможности v0.1
+## Quick start
 
-* Источники видео: экранная область (MSS), OBS Virtual Camera, RTMP/HLS (через OpenCV).
-* Калибровка ROI (области интереса): `minimap`, `status`, `damage_log`, `crosshair`.
-* Миникарта: детекция союзных/вражеских маркеров по цвету (HSV), кластеризация близких меток.
-* «Лампочка» (Sixth Sense): шаблон‑матчинг (подставь свой шаблон PNG).
-* OCR (опционально, EasyOCR): парсинг HP/скорости/таймера.
-* Эвристики совета: «откатись/давим фланг/бережём ХП/не пикать под численным перевесом рядом».
-* Оверлей с подсказками и FPS; запись кадров в датасет; скрипт дообучения YOLOv8 для HUD‑иконок.
+### Installation
 
----
-
-## Быстрый старт
-
-1. **Установка**
-
-   ```bash
-   python -m venv .venv && source .venv/bin/activate  # или .venv\Scripts\activate в Windows
-   pip install -r requirements.txt
-   ```
-2. **Калибровка ROI** (под свой HUD):
-
-   ```bash
-   python calibrate.py --source screen
-   ```
-
-   Наведи мышкой и выдели прямоугольники: 1 — minimap, 2 — status, 3 — damage_log, 4 — crosshair, S — сохранить.
-3. **Запуск ассистента**:
-
-   ```bash
-   python main.py --config config.yaml --source screen
-   ```
-
-   Горячие клавиши: `Q` — выход, `D` — показать/скрыть отладку, `R` — запись датасета.
-
-> Альтернатива: OBS → **Start Virtual Camera**, затем `--source camera --camera-index 0`.
-
----
-
-## Структура проекта
-
-```
-.
-├─ requirements.txt
-├─ config.example.yaml   # cкопируй в config.yaml и подправь
-├─ main.py               # главный цикл: захват → перцепция → политика → оверлей
-├─ capture.py            # источники видео (экран, камера, RTMP/HLS)
-├─ calibrate.py          # интерактивная разметка ROI
-├─ perception.py         # миникарта/лампочка/OCR
-├─ policy.py             # генерация советов
-├─ overlay.py            # рисование подсказок/отладка
-├─ utils.py              # служебные штуки (FPS, безопасные импорты)
-├─ collect.py            # запись кадров и ROI в датасет
-├─ train_hud.py          # дообучение YOLOv8 на твоих VOD’ах (необязательно)
-└─ assets/
-   └─ sixth_sense.png    # шаблон лампочки (положи сюда свой)
+```bash
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
----
+### Recording gameplay
 
-## requirements.txt
+Use `record.py` to capture your gameplay. The following example matches the game window by process name and records both video and frames:
 
-```txt
-opencv-python
-numpy
-mss
-pyyaml
-scikit-image
-scikit-learn
-# Опционально (для OCR и дообучения):
-# easyocr
-# ultralytics
+```bash
+python record.py --source window --match-by process_name --process-name WorldOfTanks.exe --video --frames --fps 30 --frame-step 15 --preview
 ```
 
-> `easyocr` тянет PyTorch; ставь, если нужен OCR. `ultralytics` — если будешь дообучать детектор HUD.
+Options:
 
----
+- `--match-by process_name --process-name WorldOfTanks.exe` matches the World of Tanks process.
+- `--match-by pid --pid 9404` matches a specific PID (useful when multiple clients are running).
+- `--match-by title --window-title "WoT Client"` matches by window title.
+- `--video` saves an MP4 file under the session directory.
+- `--frames` saves individual JPEG frames every `--frame-step` frames.
+- `--preview` shows a live preview window; press **Q** or **Esc** to stop recording.
 
-## config.example.yaml
+Sessions are saved under `data/sessions/` with a timestamped folder containing a `video/capture.mp4` file, a `frames` directory, and a `meta.json` describing the session parameters.
 
-```yaml
-source: screen  # screen | camera | rtmp | hls
-screen_region: [0, 0, 1920, 1080]  # x, y, w, h для захвата экрана
-camera_index: 0
-url: "rtmp://localhost/live/wot"  # для rtmp/hls
+Ensure your game is running in **Windowed (Borderless)** mode and that the window remains visible during recording.
 
-rois:
-  minimap:   [1500, 780, 380, 300]
-  status:    [20, 940, 600, 120]
-  damage_log: [1200, 100, 600, 300]
-  crosshair: [890, 470, 140, 140]
+### Training a RotNet model
 
-ui:
-  overlay_scale: 1.0
-  show_debug: true
-  speak: false  # можешь озвучку прикрутить позже
+After recording gameplay, you can train a RotNet model on your frames to learn a useful feature representation without any manual labels:
 
-minimap_hsv:
-  enemy_low:  [0, 120, 120]
-  enemy_high: [10, 255, 255]
-  ally_low:   [35, 120, 120]
-  ally_high:  [85, 255, 255]
-  # при необходимости добавь красный диапазон [170..180] для красного кольца
-
-assets:
-  sixth_sense_template: "assets/sixth_sense.png"
-
-recording:
-  out_dir: "dataset"
-  save_every_n_frames: 30
+```bash
+python train_rotnet.py --data data/sessions/session_YYYYMMDD_HHMMSS/frames --epochs 5 --batch-size 64
 ```
 
-> Калибратор заполнит `rois` и `screen_region` автоматически и сохранит в `config.yaml`.
+This will save a model checkpoint to `models/rotnet_resnet18.pth`. You can later use this encoder for downstream tasks such as event detection, minimap classification or clustering.
+
+## Notes
+
+* This lite version focuses on data collection and self‑supervised learning. It does not include in‑game overlays or tactical advice.
+* On Windows, you may need to install the CPU-only versions of PyTorch:
+  ```bash
+  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+  ```
+* The `record.py` script relies on `pywin32` and `psutil` for window management.
+* Always ensure the game window is not minimized; otherwise no frames will be captured.
