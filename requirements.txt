@@ -2,8 +2,13 @@ opencv-python
 numpy
 mss
 pyyaml
+scikit-image
+scikit-learn
 pywin32
 psutil
 tqdm
 torch
 torchvision
+# Optional dependencies:
+# easyocr
+# ultralytics
